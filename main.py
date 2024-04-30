@@ -11,6 +11,8 @@ from typing import List
 from langchain.output_parsers import ResponseSchema, StructuredOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain.prompts import FewShotPromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
+
 
 
 # Import environment variables securely
@@ -30,7 +32,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 # Initialize the API with the secure environment variable
-llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=os.environ["GOOGLE_API_KEY"], temperature=0.0)
+llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=os.environ["GOOGLE_API_KEY"], temperature=0.4)
 
 # question
 def build_prompt(input_code, interview_question):
@@ -279,6 +281,9 @@ async def analyze_code(data: CodeInput):
     # }
     
 example_gen_q = """
+Use the following as a examples of kind of questions to generate, don't generate the same thing again and again.
+
+Question:
 ------------------------------------
 Median of Two Sorted Arrays:
 Given two sorted arrays nums1 and nums2 of size m and n respectively, return the median of the two sorted arrays.
@@ -375,24 +380,117 @@ class Solution:
 
 ------------------------------------
 """
+example_gen_q2= """
+Example 2:
+------------------------------------
+Two Sum:
+Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.
+You may assume that each input would have exactly one solution, and you may not use the same element twice.
+You can return the answer in any order.
+
+------------------------------------
+Difficulty: Easy
+
+Topics: Array, Hash Table
+
+------------------------------------
+Examples: 
+
+Example 1:
+Input: nums = [2,7,11,15], target = 9
+Output: [0,1]
+Explanation: Because nums[0] + nums[1] == 9, we return [0, 1].
+
+Example 2:
+Input: nums = [3,2,4], target = 6
+Output: [1,2]
+
+Example 3:
+Input: nums = [3,3], target = 6
+Output: [0,1]
+
+------------------------------------
+Constraints:
+
+2 <= nums.length <= 10^4
+-10^9 <= nums[i] <= 10^9
+-10^9 <= target <= 10^9
+
+------------------------------------
+TestCases:
+
+Case 1:
+nums = [2,7,11,15]
+target = 9
+
+Case 2:
+nums = [3,2,4]
+target = 6
+
+Case 3:
+nums = [3,3]
+target = 6
+
+------------------------------------
+Most optimal Solution: 
+    def twoSum(self, nums: List[int], target: int) -> List[int]:
+        complements = {{}}
+        for i, num in enumerate(nums):
+            complement = target-num
+            if num not in complements:
+                complements[complement] = i+1
+            else:
+                return [complements[num], i]
+        return []
+
+------------------------------------
+"""
+
 class QuestionGenerateModel(BaseModel):
     difficulty: str
     ds: str
-    
+
+class GeneratedQuestionModel(BaseModel):
+    problem: str
+    difficulty: str
+    topics: List[str]
+    examples: List[str]
+    constraints: str
+    test_cases: List[str]
+    optimal_solution: str
+     
+
+#could add a programming language selection as a param
 @app.post("/generate_leetcode_question_breakdown")
 async def generate_leetcode_question_breakdown(model: QuestionGenerateModel):
-    template = """Create a detailed LeetCode-style which is considered a {difficulty} problem/challenge. The idea solution could use at least one  
-    {ds} data structure(s). Based on this, provide 
-            examples, constraints, test cases, solution : 
+    template = """
+    Create a detailed LeetCode-style which is considered a {difficulty} problem/challenge - ensure the problem statement is viable.
+    The idea solution could use at least one  
+    {ds} data structure(s). Based on this, generate a problem challenge which as
+            examples, constraints, test cases, solution (ensure that the solution is accurate) similar to the follow examples: 
             Example:
-            """ + example_gen_q
-    # print(template)
+            """ + example_gen_q + """another example you can get inspiration from is """+ example_gen_q2 + """
+            since I would need to parse the output in json in my frontend, after you generate the coding challenge
+            convert your new generated question to JSON with the following 
+            keys: 
+            problem: str
+            difficulty: str
+            topics: List[str]
+            examples: List[str]
+            constraints: str
+            test_cases: List[str]
+            optimal_solution: str
+            """
+
     prompt = PromptTemplate.from_template(template)
+    print('the PROMPT IS ')
+    print(prompt)
+    # prompt = PromptTemplate(template=template, input_variables=["difficulty", "ds"], partial_variables={"format_instructions": parser.get_format_instructions()})
     chain = prompt | llm
     # response = chain.invoke({"difficulty": model.easy, 'ds': model.ds})
     response = chain.invoke({"difficulty": model.difficulty, "ds": model.ds})
-
-    print(response)
+    # print('the response is : ')
+    # print(response)
     return response
 
 ###
@@ -549,22 +647,15 @@ target = 6
 ------------------------------------
 Most optimal Solution: 
 class Solution {
-public:
-    vector<int> twoSum(vector<int>& nums, int target) {
-        unordered_map<int, int> numMap;
-        int n = nums.size();
-
-        for (int i = 0; i < n; i++) {
-            int complement = target - nums[i];
-            if (numMap.count(complement)) {
-                return {numMap[complement], i};
-            }
-            numMap[nums[i]] = i;
-        }
-
-        return {{}}; // No solution found
-    }
-};
+def twoSum(self, nums: List[int], target: int) -> List[int]:
+        complements = {}
+        for i, num in enumerate(nums):
+            complement = target-num
+            if num not in complements:
+                complements[complement] = i+1
+            else:
+                return [complements[num], i]
+        return []
 
 ------------------------------------
 """
