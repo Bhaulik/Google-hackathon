@@ -471,14 +471,14 @@ async def generate_leetcode_question_breakdown(model: QuestionGenerateModel):
             Example:
             """ + example_gen_q + """another example you can get inspiration from is """+ example_gen_q2 + """
             since I would need to parse the output in json in my frontend, after you generate the coding challenge
-            convert your new generated question to JSON with the following 
+            convert your new generated question to JSON with the following. Ensure you escape the strings properly and that
+            the output will work seemlessly with JSON.parse function without any errors or exceptions when used against the output. 
             keys: 
             problem: str
             difficulty: str
-            topics: List[str]
-            examples: List[str]
+            topics: List[str] //the elements should strictly be strings not objects
             constraints: str
-            test_cases: List[str]
+            test_cases: List[str] //the elements should strictly be strings and not objects
             optimal_solution: str
             """
 
