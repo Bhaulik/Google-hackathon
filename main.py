@@ -17,7 +17,7 @@ from langchain_core.output_parsers import JsonOutputParser
 
 # Import environment variables securely
 if "GOOGLE_API_KEY" not in os.environ:
-    os.environ["GOOGLE_API_KEY"] =  'AIzaSyCUGkPx62RfjV1TtTjDjEXinnr9kWzUYSA' #input("Enter your Google API key: ")
+    os.environ["GOOGLE_API_KEY"] =  ' enter api key ' #input("Enter your Google API key: ")
 origins = [
     "http://localhost",
     "http://localhost:3000",
